@@ -1,0 +1,559 @@
+-- Serviços
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+local UserInputService = game:GetService("UserInputService")
+
+-- Referências
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Configurações das hitboxes
+local hitboxes = {
+    {
+        deteccaoCentro = Vector3.new(130.60, -11.98, 84.01),
+        deteccaoRaio = 6.00,
+        ativacaoCentro = Vector3.new(141.79, -11.49, 86.19),
+        ativacaoRaio = 5.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-25.98, 120.66, 20.62),
+        deteccaoRaio = 10.00,
+        ativacaoCentro = Vector3.new(-4.11, 117.70, 20.61),
+        ativacaoRaio = 13.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(1.72, 167.65, 100.80),
+        deteccaoRaio = 8.00,
+        ativacaoCentro = Vector3.new(-2.78, 169.65, 100.89),
+        ativacaoRaio = 12.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-17.56, 263.21, 22.10),
+        deteccaoRaio = 9.00,
+        ativacaoCentro = Vector3.new(-35.27, 265.53, 22.45),
+        ativacaoRaio = 10.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-21.29, 288.38, 103.92),
+        deteccaoRaio = 9.00,
+        ativacaoCentro = Vector3.new(1.65, 287.82, 100.58),
+        ativacaoRaio = 15.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(34.89, 290.87, 60.90),
+        deteccaoRaio = 10.00,
+        ativacaoCentro = Vector3.new(34.68, 290.87, 52.80),
+        ativacaoRaio = 23.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-28.20, 417.41, 21.59),
+        deteccaoRaio = 7.00,
+        ativacaoCentro = Vector3.new(-28.26, 417.43, 21.64),
+        ativacaoRaio = 12.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-10.71, 418.56, 36.88),
+        deteccaoRaio = 7.00,
+        ativacaoCentro = Vector3.new(-8.98, 418.27, 38.41),
+        ativacaoRaio = 13.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-47.95, 486.53, 54.23),
+        deteccaoRaio = 8.00,
+        ativacaoCentro = Vector3.new(-49.89, 486.49, 54.69),
+        ativacaoRaio = 16.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(43.26, 530.08, 60.91),
+        deteccaoRaio = 10.00,
+        ativacaoCentro = Vector3.new(43.76, 530.19, 46.07),
+        ativacaoRaio = 19.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-7.30, 552.47, 59.34),
+        deteccaoRaio = 9.00,
+        ativacaoCentro = Vector3.new(-12.21, 559.10, 64.67),
+        ativacaoRaio = 20.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-53.51, 668.38, 62.43),
+        deteccaoRaio = 8.00,
+        ativacaoCentro = Vector3.new(-54.71, 667.70, 51.48),
+        ativacaoRaio = 16.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-7.41, 719.96, 19.54),
+        deteccaoRaio = 10.00,
+        ativacaoCentro = Vector3.new(-33.29, 722.71, 20.89),
+        ativacaoRaio = 8.00,
+        ativa = true
+    },
+    {
+        deteccaoCentro = Vector3.new(-105.65, 772.86, 54.09),
+        deteccaoRaio = 9.00,
+        ativacaoCentro = Vector3.new(-105.06, 773.27, 52.47),
+        ativacaoRaio = 20.00,
+        ativa = true
+    }
+}
+
+-- Variáveis de controle
+local jogadoresDetectados = {}
+local spectating = false
+local spectateDuration = 5
+local spectateEnabled = true
+local scriptEnabled = true
+local monitorConnection = nil
+local hudVisible = false
+local currentHitboxIndex = 0
+local cameraPart = nil
+local dragging = false
+local dragStart = nil
+local startPos = nil
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "TrollHUD"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Botão 😈
+local devilBtn = Instance.new("TextButton")
+devilBtn.Name = "DevilButton"
+devilBtn.Size = UDim2.new(0, 50, 0, 50)
+devilBtn.Position = UDim2.new(1, -60, 0.5, 0)
+devilBtn.Text = "😈"
+devilBtn.TextScaled = true
+devilBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+devilBtn.BackgroundTransparency = 0.2
+devilBtn.Font = Enum.Font.GothamBold
+devilBtn.TextColor3 = Color3.new(1, 1, 1)
+devilBtn.BorderSizePixel = 0
+local corner = Instance.new("UICorner", devilBtn)
+corner.CornerRadius = UDim.new(1, 0)
+local stroke = Instance.new("UIStroke", devilBtn)
+stroke.Color = Color3.new(1, 1, 1)
+stroke.Thickness = 1
+devilBtn.Parent = gui
+
+-- HUD
+local hudFrame = Instance.new("Frame")
+hudFrame.Name = "HUDFrame"
+hudFrame.Size = UDim2.new(0, 150, 0, 250)
+hudFrame.Position = UDim2.new(0.5, -75, 0.5, -125)
+hudFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+hudFrame.BackgroundTransparency = 0.5
+hudFrame.Visible = false
+local hudCorner = Instance.new("UICorner", hudFrame)
+hudCorner.CornerRadius = UDim.new(0, 20)
+local hudStroke = Instance.new("UIStroke", hudFrame)
+hudStroke.Color = Color3.new(1, 1, 1)
+hudStroke.Thickness = 1
+hudFrame.Parent = gui
+
+-- Botão Spectate
+local spectateBtn = Instance.new("TextButton")
+spectateBtn.Name = "SpectateButton"
+spectateBtn.Size = UDim2.new(0, 60, 0, 60)
+spectateBtn.Position = UDim2.new(0.5, -30, 0, 10)
+spectateBtn.Text = "On"
+spectateBtn.TextScaled = true
+spectateBtn.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
+spectateBtn.Font = Enum.Font.GothamBold
+spectateBtn.TextColor3 = Color3.new(1, 1, 1)
+spectateBtn.BorderSizePixel = 0
+local spectateCorner = Instance.new("UICorner", spectateBtn)
+spectateCorner.CornerRadius = UDim.new(1, 0)
+local spectateStroke = Instance.new("UIStroke", spectateBtn)
+spectateStroke.Color = Color3.new(1, 1, 1)
+spectateStroke.Thickness = 1
+spectateBtn.Parent = hudFrame
+
+-- Botão Script
+local scriptBtn = Instance.new("TextButton")
+scriptBtn.Name = "ScriptButton"
+scriptBtn.Size = UDim2.new(0, 60, 0, 60)
+scriptBtn.Position = UDim2.new(0.5, -30, 0, 80)
+scriptBtn.Text = "On"
+scriptBtn.TextScaled = true
+scriptBtn.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
+scriptBtn.Font = Enum.Font.GothamBold
+scriptBtn.TextColor3 = Color3.new(1, 1, 1)
+scriptBtn.BorderSizePixel = 0
+local scriptCorner = Instance.new("UICorner", scriptBtn)
+scriptCorner.CornerRadius = UDim.new(1, 0)
+local scriptStroke = Instance.new("UIStroke", scriptBtn)
+scriptStroke.Color = Color3.new(1, 1, 1)
+scriptStroke.Thickness = 1
+scriptBtn.Parent = hudFrame
+
+-- Seta Esquerda
+local leftBtn = Instance.new("TextButton")
+leftBtn.Name = "LeftButton"
+leftBtn.Size = UDim2.new(0, 30, 0, 30)
+leftBtn.Position = UDim2.new(0.25, -15, 0, 150)
+leftBtn.Text = "⬅️"
+leftBtn.TextScaled = true
+leftBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+leftBtn.Font = Enum.Font.GothamBold
+leftBtn.TextColor3 = Color3.new(1, 1, 1)
+leftBtn.BorderSizePixel = 0
+local leftCorner = Instance.new("UICorner", leftBtn)
+leftCorner.CornerRadius = UDim.new(1, 0)
+local leftStroke = Instance.new("UIStroke", leftBtn)
+leftStroke.Color = Color3.new(1, 1, 1)
+leftStroke.Thickness = 1
+leftBtn.Parent = hudFrame
+
+-- Seta Direita
+local rightBtn = Instance.new("TextButton")
+rightBtn.Name = "RightButton"
+rightBtn.Size = UDim2.new(0, 30, 0, 30)
+rightBtn.Position = UDim2.new(0.75, -15, 0, 150)
+rightBtn.Text = "➡️"
+rightBtn.TextScaled = true
+rightBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+rightBtn.Font = Enum.Font.GothamBold
+rightBtn.TextColor3 = Color3.new(1, 1, 1)
+rightBtn.BorderSizePixel = 0
+local rightCorner = Instance.new("UICorner", rightBtn)
+rightCorner.CornerRadius = UDim.new(1, 0)
+local rightStroke = Instance.new("UIStroke", rightBtn)
+rightStroke.Color = Color3.new(1, 1, 1)
+rightStroke.Thickness = 1
+rightBtn.Parent = hudFrame
+
+-- Botão Desligar Hitbox
+local disableHitboxBtn = Instance.new("TextButton")
+disableHitboxBtn.Name = "DisableHitboxButton"
+disableHitboxBtn.Size = UDim2.new(0, 100, 0, 30)
+disableHitboxBtn.Position = UDim2.new(0.5, -50, 0, 190)
+disableHitboxBtn.Text = "Desligar Hitbox"
+disableHitboxBtn.TextScaled = true
+disableHitboxBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+disableHitboxBtn.Font = Enum.Font.GothamBold
+disableHitboxBtn.TextColor3 = Color3.new(1, 1, 1)
+disableHitboxBtn.BorderSizePixel = 0
+local disableCorner = Instance.new("UICorner", disableHitboxBtn)
+disableCorner.CornerRadius = UDim.new(0.5, 0)
+local disableStroke = Instance.new("UIStroke", disableHitboxBtn)
+disableStroke.Color = Color3.new(1, 1, 1)
+disableStroke.Thickness = 1
+disableHitboxBtn.Parent = hudFrame
+
+-- Botão Voltar
+local voltarBtn = Instance.new("TextButton")
+voltarBtn.Name = "VoltarButton"
+voltarBtn.Size = UDim2.new(0, 100, 0, 30)
+voltarBtn.Position = UDim2.new(0.5, -50, 0, 230)
+voltarBtn.Text = "Voltar"
+voltarBtn.TextScaled = true
+voltarBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+voltarBtn.Font = Enum.Font.GothamBold
+voltarBtn.TextColor3 = Color3.new(1, 1, 1)
+voltarBtn.BorderSizePixel = 0
+local voltarCorner = Instance.new("UICorner", voltarBtn)
+voltarCorner.CornerRadius = UDim.new(0.5, 0)
+local voltarStroke = Instance.new("UIStroke", voltarBtn)
+voltarStroke.Color = Color3.new(1, 1, 1)
+voltarStroke.Thickness = 1
+voltarBtn.Parent = hudFrame
+
+-- Função para arrastar HUD
+local function startDragging(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = hudFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end
+
+local function updateDragging(input)
+    if dragging then
+        local delta = input.Position - dragStart
+        hudFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
+end
+
+-- Funções
+local function criarRegiao(centro, raio)
+    return Region3.new(
+        centro - Vector3.new(raio, raio, raio),
+        centro + Vector3.new(raio, raio, raio)
+    )
+end
+
+local function acionarPlataformas(ativacaoCentro, ativacaoRaio)
+    local regiaoAtivacao = criarRegiao(ativacaoCentro, ativacaoRaio)
+    local partes = Workspace:FindPartsInRegion3(regiaoAtivacao, nil, math.huge)
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    
+    if hrp then
+        for _, parte in pairs(partes) do
+            if parte:IsA("BasePart") and parte.Parent and parte.Parent:IsA("Model") then
+                firetouchinterest(hrp, parte, 0)
+                firetouchinterest(hrp, parte, 1)
+            end
+        end
+    end
+end
+
+local function iniciarSpectate(targetPlayer)
+    if spectating or not targetPlayer or not targetPlayer.Character or not spectateEnabled then return end
+    local targetHumanoid = targetPlayer.Character:FindFirstChild("Humanoid")
+    if not targetHumanoid then return end
+
+    spectating = true
+    Camera.CameraSubject = targetHumanoid
+    Camera.CameraType = Enum.CameraType.Follow
+
+    task.spawn(function()
+        task.wait(spectateDuration)
+        if player.Character then
+            local playerHumanoid = player.Character:FindFirstChild("Humanoid")
+            if playerHumanoid then
+                Camera.CameraSubject = playerHumanoid
+                Camera.CameraType = Enum.CameraType.Custom
+            end
+        end
+        spectating = false
+    end)
+end
+
+local function toggleSpectate()
+    spectateEnabled = not spectateEnabled
+    spectateBtn.Text = spectateEnabled and "On" or "Off"
+    spectateBtn.BackgroundColor3 = spectateEnabled and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(50, 50, 50)
+    
+    if not spectateEnabled and spectating then
+        spectating = false
+        if player.Character then
+            local playerHumanoid = player.Character:FindFirstChild("Humanoid")
+            if playerHumanoid then
+                Camera.CameraSubject = playerHumanoid
+                Camera.CameraType = Enum.CameraType.Custom
+            end
+        end
+    end
+end
+
+local function toggleScript()
+    scriptEnabled = not scriptEnabled
+    scriptBtn.Text = scriptEnabled and "On" or "Off"
+    scriptBtn.BackgroundColor3 = scriptEnabled and Color3.fromRGB(50, 205, 50) or Color3.fromRGB(50, 50, 50)
+end
+
+local function desativarTudo()
+    if monitorConnection then
+        monitorConnection:Disconnect()
+        monitorConnection = nil
+    end
+    gui:Destroy()
+    spectating = false
+    spectateEnabled = false
+    scriptEnabled = false
+    if cameraPart then
+        cameraPart:Destroy()
+        cameraPart = nil
+    end
+    if player.Character then
+        local playerHumanoid = player.Character:FindFirstChild("Humanoid")
+        if playerHumanoid then
+            Camera.CameraSubject = playerHumanoid
+            Camera.CameraType = Enum.CameraType.Custom
+        end
+    end
+end
+
+local function visualizarHitbox(index)
+    if not hitboxes[index] or not hitboxes[index].ativa then return end
+    currentHitboxIndex = index
+
+    if cameraPart then
+        cameraPart:Destroy()
+    end
+    cameraPart = Instance.new("Part")
+    cameraPart.Position = hitboxes[index].deteccaoCentro
+    cameraPart.Anchored = true
+    cameraPart.Size = Vector3.new(0.1, 0.1, 0.1)
+    cameraPart.Transparency = 1
+    cameraPart.Parent = Workspace
+
+    Camera.CameraSubject = cameraPart
+    Camera.CameraType = Enum.CameraType.Follow
+end
+
+local function navigateHitbox(direction)
+    local newIndex = currentHitboxIndex
+    local count = #hitboxes
+
+    if direction == "right" then
+        newIndex = newIndex + 1
+        if newIndex > count then newIndex = 1 end
+    elseif direction == "left" then
+        newIndex = newIndex - 1
+        if newIndex < 1 then newIndex = count end
+    end
+
+    while newIndex ~= currentHitboxIndex do
+        if hitboxes[newIndex] and hitboxes[newIndex].ativa then
+            visualizarHitbox(newIndex)
+            break
+        end
+        if direction == "right" then
+            newIndex = newIndex + 1
+            if newIndex > count then newIndex = 1 end
+        else
+            newIndex = newIndex - 1
+            if newIndex < 1 then newIndex = count end
+        end
+        if newIndex == currentHitboxIndex then break end
+    end
+end
+
+local function desativarHitbox()
+    if currentHitboxIndex > 0 and hitboxes[currentHitboxIndex] and hitboxes[currentHitboxIndex].ativa then
+        hitboxes[currentHitboxIndex].ativa = false
+        currentHitboxIndex = 0
+        if cameraPart then
+            cameraPart:Destroy()
+            cameraPart = nil
+        end
+        if player.Character then
+            local playerHumanoid = player.Character:FindFirstChild("Humanoid")
+            if playerHumanoid then
+                Camera.CameraSubject = playerHumanoid
+                Camera.CameraType = Enum.CameraType.Custom
+            end
+        end
+    end
+end
+
+local function voltarCamera()
+    currentHitboxIndex = 0
+    if cameraPart then
+        cameraPart:Destroy()
+        cameraPart = nil
+    end
+    if player.Character then
+        local playerHumanoid = player.Character:FindFirstChild("Humanoid")
+        if playerHumanoid then
+            Camera.CameraSubject = playerHumanoid
+            Camera.CameraType = Enum.CameraType.Custom
+        end
+    end
+end
+
+local function toggleHUD()
+    hudVisible = not hudVisible
+    hudFrame.Visible = hudVisible
+end
+
+local function verificarJogadores()
+    if not scriptEnabled then return end
+    jogadoresDetectados = {}
+
+    for i, config in ipairs(hitboxes) do
+        if not config.ativa then continue end
+        local regiaoDeteccao = criarRegiao(config.deteccaoCentro, config.deteccaoRaio)
+        local partes = Workspace:FindPartsInRegion3(regiaoDeteccao, nil, math.huge)
+        
+        for _, parte in pairs(partes) do
+            local char = parte:FindFirstAncestorOfClass("Model")
+            local plr = Players:GetPlayerFromCharacter(char)
+            if plr and char:FindFirstChild("HumanoidRootPart") then
+                table.insert(jogadoresDetectados, plr)
+                acionarPlataformas(config.ativacaoCentro, config.ativacaoRaio)
+                break
+            end
+        end
+    end
+
+    if #jogadoresDetectados > 0 and not spectating and spectateEnabled then
+        local randomIndex = math.random(1, #jogadoresDetectados)
+        iniciarSpectate(jogadoresDetectados[randomIndex])
+    end
+end
+
+-- Conexões
+devilBtn.MouseButton1Click:Connect(toggleHUD)
+spectateBtn.MouseButton1Click:Connect(toggleSpectate)
+scriptBtn.MouseButton1Click:Connect(toggleScript)
+leftBtn.MouseButton1Click:Connect(function() navigateHitbox("left") end)
+rightBtn.MouseButton1Click:Connect(function() navigateHitbox("right") end)
+disableHitboxBtn.MouseButton1Click:Connect(desativarHitbox)
+voltarBtn.MouseButton1Click:Connect(voltarCamera)
+
+hudFrame.InputBegan:Connect(startDragging)
+UserInputService.InputChanged:Connect(updateDragging)
+
+monitorConnection = RunService.Heartbeat:Connect(function()
+    verificarJogadores()
+    task.wait(0.1)
+end)
+
+player.Chatted:Connect(function(message)
+    if message:lower() == "/offtroll" then
+        desativarTudo()
+    end
+end)
+
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoid = char:WaitForChild("Humanoid")
+    if not spectating and currentHitboxIndex == 0 then
+        Camera.CameraSubject = humanoid
+        Camera.CameraType = Enum.CameraType.Custom
+    end
+end)
+
+-- Arrastar botão 😈
+local devilDragging = false
+local devilDragStart = nil
+local devilStartPos = nil
+
+devilBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        devilDragging = true
+        devilDragStart = input.Position
+        devilStartPos = devilBtn.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                devilDragging = false
+            end
+        end)
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if devilDragging then
+        local delta = input.Position - devilDragStart
+        devilBtn.Position = UDim2.new(
+            devilStartPos.X.Scale, devilStartPos.X.Offset + delta.X,
+            devilStartPos.Y.Scale, devilStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
