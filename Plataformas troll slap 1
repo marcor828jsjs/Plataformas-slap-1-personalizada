@@ -125,6 +125,7 @@ local cameraPart = nil
 local dragging = false
 local dragStart = nil
 local startPos = nil
+local immunePlayerName = nil  -- Variável para guardar o nome do jogador imune
 
 -- GUI
 local gui = Instance.new("ScreenGui")
@@ -154,8 +155,8 @@ devilBtn.Parent = gui
 -- HUD
 local hudFrame = Instance.new("Frame")
 hudFrame.Name = "HUDFrame"
-hudFrame.Size = UDim2.new(0, 150, 0, 250)
-hudFrame.Position = UDim2.new(0.5, -75, 0.5, -125)
+hudFrame.Size = UDim2.new(0, 150, 0, 280)  -- Aumentei o tamanho pra caber a TextBox
+hudFrame.Position = UDim2.new(0.5, -75, 0.5, -140)
 hudFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 hudFrame.BackgroundTransparency = 0.5
 hudFrame.Visible = false
@@ -273,6 +274,25 @@ local voltarStroke = Instance.new("UIStroke", voltarBtn)
 voltarStroke.Color = Color3.new(1, 1, 1)
 voltarStroke.Thickness = 1
 voltarBtn.Parent = hudFrame
+
+-- TextBox para imunidade
+local immuneTextBox = Instance.new("TextBox")
+immuneTextBox.Name = "ImmuneTextBox"
+immuneTextBox.Size = UDim2.new(0, 100, 0, 30)
+immuneTextBox.Position = UDim2.new(0.5, -50, 0, 270)  -- Abaixo do botão "Voltar"
+immuneTextBox.Text = ""
+immuneTextBox.PlaceholderText = "Nome do jogador"
+immuneTextBox.TextColor3 = Color3.new(1, 1, 1)
+immuneTextBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+immuneTextBox.Font = Enum.Font.GothamBold
+immuneTextBox.TextScaled = true
+immuneTextBox.BorderSizePixel = 0
+local immuneCorner = Instance.new("UICorner", immuneTextBox)
+immuneCorner.CornerRadius = UDim.new(0.2, 0)
+local immuneStroke = Instance.new("UIStroke", immuneTextBox)
+immuneStroke.Color = Color3.new(1, 1, 1)
+immuneStroke.Thickness = 1
+immuneTextBox.Parent = hudFrame
 
 -- Função para arrastar HUD
 local function startDragging(input)
@@ -484,7 +504,7 @@ local function verificarJogadores()
         for _, parte in pairs(partes) do
             local char = parte:FindFirstAncestorOfClass("Model")
             local plr = Players:GetPlayerFromCharacter(char)
-            if plr and char:FindFirstChild("HumanoidRootPart") then
+            if plr and char:FindFirstChild("HumanoidRootPart") and plr.Name ~= immunePlayerName then
                 table.insert(jogadoresDetectados, plr)
                 acionarPlataformas(config.ativacaoCentro, config.ativacaoRaio)
                 break
@@ -555,5 +575,19 @@ UserInputService.InputChanged:Connect(function(input)
             devilStartPos.X.Scale, devilStartPos.X.Offset + delta.X,
             devilStartPos.Y.Scale, devilStartPos.Y.Offset + delta.Y
         )
+    end
+end)
+
+-- Lógica de imunidade
+immuneTextBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local input = immuneTextBox.Text
+        if input == "0" then
+            immunePlayerName = nil
+            print("Imunidade removida")
+        else
+            immunePlayerName = input
+            print("O jogador " .. input .. " está imune")
+        end
     end
 end)
